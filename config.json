@@ -1,7 +1,6 @@
 {
   "CDN_ENDPOINT": "https://cdn.radon.games/",
-  "FAILURE_STATUS": 301,
-  "FAILURE_MESSAGE": "301 Moved Permanently",
+  "FAILURE_FILE": "../fail.html",
   "STATIC_PATH": "../Radon-Games/dist/",
   "WHITELIST": ["radon.games"],
   "PORT": 3000,

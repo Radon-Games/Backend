@@ -2,14 +2,18 @@ import * as config from "../config.json";
 import cookieParser from "cookie-parser";
 import express, { Request, Response } from "express";
 import proxy from "express-http-proxy";
+import fs from "fs/promises";
+import path from "path";
 
 const app = express();
 app.use(cookieParser());
 
 app.use("/cdn", proxy(config.CDN_ENDPOINT));
 
-function failMasqr(req: Request, res: Response) {
-  res.status(config.FAILURE_STATUS).send(config.FAILURE_MESSAGE);
+async function failMasqr(req: Request, res: Response) {
+  res.send(
+    await fs.readFile(path.join(__dirname, config.FAILURE_FILE), "utf8")
+  );
 }
 
 app.use(async (req, res, next) => {
@@ -38,6 +42,7 @@ app.use(async (req, res, next) => {
 
   if (!authheader) {
     res.setHeader("WWW-Authenticate", "Basic");
+    res.status(401);
     failMasqr(req, res);
     return;
   }
@@ -47,19 +52,21 @@ app.use(async (req, res, next) => {
     .split(":");
   const pass = auth[1];
 
-  const licenseCheck = (
-    await (
-      await fetch(
-        config.LICENSE_SERVER_URL + pass + "&host=" + req.headers.host
-      )
-    ).json()
-  )["status"];
+  const authCheck = await fetch(
+    config.LICENSE_SERVER_URL + pass + "&host=" + req.headers.host
+  );
+
+  const authResponse = await authCheck.json();
+
+  console.log(authResponse);
+
+  const licenseCheck = authResponse["status"];
 
   if (licenseCheck == "License valid") {
     res.cookie("authcheck", "true", {
       expires: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
     });
-    res.send("<script> window.location.href = window.location.href </script>");
+    res.send("<script>window.location.href=window.location.href</script>");
     return;
   }
 
